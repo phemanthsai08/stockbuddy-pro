@@ -3,6 +3,7 @@
  * The only module that talks to LocalStorage directly.
  */
 import { createSeedData } from "./sample-data";
+import { FIELD_LIMITS, sanitizeText } from "./sanitize";
 import type { Product, Settings, Transaction, WarehouseData } from "./types";
 
 export const STORAGE_KEY = "stocknova:data:v1";
@@ -30,14 +31,23 @@ function sanitizeProduct(raw: unknown): Product | null {
     typeof v === "number" && Number.isFinite(v) ? v : fallback;
   return {
     id: typeof p["id"] === "string" ? p["id"] : crypto.randomUUID(),
-    sku: p["sku"],
-    name: p["name"],
-    category: typeof p["category"] === "string" ? p["category"] : "Uncategorized",
+    sku: sanitizeText(String(p["sku"]), FIELD_LIMITS.sku),
+    name: sanitizeText(String(p["name"]), FIELD_LIMITS.name),
+    category:
+      typeof p["category"] === "string"
+        ? sanitizeText(p["category"], FIELD_LIMITS.category) || "Uncategorized"
+        : "Uncategorized",
     quantity: Math.max(0, Math.round(num(p["quantity"]))),
     minimumStock: Math.max(0, Math.round(num(p["minimumStock"]))),
-    location: typeof p["location"] === "string" ? p["location"] : "—",
+    location:
+      typeof p["location"] === "string"
+        ? sanitizeText(p["location"], FIELD_LIMITS.location) || "—"
+        : "—",
     unitPrice: Math.max(0, num(p["unitPrice"])),
-    supplier: typeof p["supplier"] === "string" ? p["supplier"] : "—",
+    supplier:
+      typeof p["supplier"] === "string"
+        ? sanitizeText(p["supplier"], FIELD_LIMITS.supplier) || "—"
+        : "—",
     createdAt: typeof p["createdAt"] === "string" ? p["createdAt"] : new Date().toISOString(),
     updatedAt: typeof p["updatedAt"] === "string" ? p["updatedAt"] : new Date().toISOString(),
   };
@@ -47,19 +57,27 @@ function sanitizeTransaction(raw: unknown): Transaction | null {
   if (!raw || typeof raw !== "object") return null;
   const t = raw as Record<string, unknown>;
   if (t["type"] !== "IN" && t["type"] !== "OUT") return null;
-  const qty = typeof t["quantity"] === "number" && Number.isFinite(t["quantity"]) ? t["quantity"] : 0;
+  const qty =
+    typeof t["quantity"] === "number" && Number.isFinite(t["quantity"]) ? t["quantity"] : 0;
   if (qty <= 0) return null;
   return {
     id: typeof t["id"] === "string" ? t["id"] : crypto.randomUUID(),
     productId: typeof t["productId"] === "string" ? t["productId"] : "",
-    productName: typeof t["productName"] === "string" ? t["productName"] : "Unknown product",
+    productName:
+      typeof t["productName"] === "string" ? t["productName"] : "Unknown product",
     sku: typeof t["sku"] === "string" ? t["sku"] : "—",
     type: t["type"],
     quantity: Math.round(qty),
-    party: typeof t["party"] === "string" ? t["party"] : "—",
+    party:
+      typeof t["party"] === "string"
+        ? sanitizeText(t["party"], FIELD_LIMITS.party) || "—"
+        : "—",
     date: typeof t["date"] === "string" ? t["date"] : new Date().toISOString().slice(0, 10),
-    reference: typeof t["reference"] === "string" ? t["reference"] : "—",
-    notes: typeof t["notes"] === "string" ? t["notes"] : "",
+    reference:
+      typeof t["reference"] === "string"
+        ? sanitizeText(t["reference"], FIELD_LIMITS.reference) || "—"
+        : "—",
+    notes: typeof t["notes"] === "string" ? sanitizeText(t["notes"], FIELD_LIMITS.notes) : "",
     createdAt: typeof t["createdAt"] === "string" ? t["createdAt"] : new Date().toISOString(),
   };
 }
@@ -93,12 +111,6 @@ export function parseData(rawJson: string | null): WarehouseData | null {
   }
 }
 
-/**
- * Loads persisted data.
- * Seeds realistic demo data when LocalStorage is empty OR when the stored
- * dataset has zero products (common after a bad first write / private browsing).
- * Never overwrites a dataset that already contains products.
- */
 export function loadData(): WarehouseData {
   if (!isBrowser()) return EMPTY_DATA;
   const existing = parseData(window.localStorage.getItem(STORAGE_KEY));
