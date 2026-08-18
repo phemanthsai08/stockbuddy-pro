@@ -10,33 +10,53 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as StockInRouteImport } from './routes/stock-in'
+import { Route as StockOutRouteImport } from './routes/stock-out'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const StockInRoute = StockInRouteImport.update({
+  id: '/stock-in',
+  path: '/stock-in',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StockOutRoute = StockOutRouteImport.update({
+  id: '/stock-out',
+  path: '/stock-out',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/stock-in': typeof StockInRoute
+  '/stock-out': typeof StockOutRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/stock-in': typeof StockInRoute
+  '/stock-out': typeof StockOutRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/stock-in': typeof StockInRoute
+  '/stock-out': typeof StockOutRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths: '/' | '/stock-in' | '/stock-out'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to: '/' | '/stock-in' | '/stock-out'
+  id: '__root__' | '/' | '/stock-in' | '/stock-out'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  StockInRoute: typeof StockInRoute
+  StockOutRoute: typeof StockOutRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,11 +68,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/stock-in': {
+      id: '/stock-in'
+      path: '/stock-in'
+      fullPath: '/stock-in'
+      preLoaderRoute: typeof StockInRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/stock-out': {
+      id: '/stock-out'
+      path: '/stock-out'
+      fullPath: '/stock-out'
+      preLoaderRoute: typeof StockOutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  StockInRoute: StockInRoute,
+  StockOutRoute: StockOutRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
