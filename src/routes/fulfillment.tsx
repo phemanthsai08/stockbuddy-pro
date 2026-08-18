@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { ClipboardList, MapPin, Plus, Trash2 } from "lucide-react";
+import { ClipboardList, Download, MapPin, Plus, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
@@ -14,7 +14,7 @@ import {
   type FulfillmentLine,
   type PickListItem,
 } from "@/lib/warehouse/fulfillment";
-import { formatCurrency, formatNumber, todayISO } from "@/lib/warehouse/logic";
+import { downloadCSV, formatCurrency, formatNumber, todayISO, toCSV } from "@/lib/warehouse/logic";
 import { useWarehouse } from "@/lib/warehouse/store";
 
 export const Route = createFileRoute("/fulfillment")({
@@ -24,7 +24,7 @@ export const Route = createFileRoute("/fulfillment")({
       {
         name: "description",
         content:
-          "Build multi-line customer orders, generate location-sorted pick lists, and fulfill stock in one atomic operation.",
+          "Build multi-line customer orders, generate location-sorted pick lists, export CSV, and fulfill stock in one atomic operation.",
       },
       { property: "og:title", content: "Order Fulfillment — StockNova" },
       {
@@ -99,7 +99,7 @@ function FulfillmentPage() {
     <div className="space-y-6">
       <PageHeader
         title="Order Fulfillment"
-        description="Build a multi-line order, preview a location-sorted pick list, then fulfill atomically (no partial picks)."
+        description="Build a multi-line order, preview a location-sorted pick list, export CSV, then fulfill atomically (no partial picks)."
       />
 
       <div className="grid gap-6 lg:grid-cols-2">
@@ -275,9 +275,31 @@ function FulfillmentPage() {
                   </li>
                 ))}
               </ol>
-              <Button type="button" className="mt-4 w-full" onClick={handleFulfill}>
-                Fulfill order and update inventory
-              </Button>
+              <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => {
+                    const csv = toCSV(
+                      pickList.map((item) => ({
+                        Step: item.step,
+                        Location: item.location,
+                        SKU: item.sku,
+                        Product: item.name,
+                        Qty: item.quantity,
+                      })),
+                    );
+                    downloadCSV(`pick-list-${reference}.csv`, csv);
+                    toast.success("Pick list exported");
+                  }}
+                >
+                  <Download className="size-4" aria-hidden /> Export CSV
+                </Button>
+                <Button type="button" className="flex-1" onClick={handleFulfill}>
+                  Fulfill order and update inventory
+                </Button>
+              </div>
               <p className="mt-2 text-center text-[11px] text-muted-foreground">
                 Atomic: either every line succeeds or nothing is changed.
               </p>
