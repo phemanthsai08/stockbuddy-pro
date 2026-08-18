@@ -1,4 +1,3 @@
-import { calculateStockStatus } from "@/lib/warehouse/logic";
 import { buildBinMap } from "@/lib/warehouse/locations";
 import type { Product } from "@/lib/warehouse/types";
 import { cn } from "@/lib/utils";
@@ -9,6 +8,7 @@ const TONE: Record<string, string> = {
   OUT_OF_STOCK: "border-destructive/40 bg-destructive-soft text-destructive",
 };
 
+/** Visual warehouse floor: one tile per bin, colored by worst stock status in that bin. */
 export function WarehouseBinMap({ products }: { products: Product[] }) {
   const bins = buildBinMap(products);
 
@@ -33,15 +33,20 @@ export function WarehouseBinMap({ products }: { products: Product[] }) {
           <span className="size-2.5 rounded-sm bg-destructive" aria-hidden /> Out
         </span>
       </div>
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
+      <div
+        className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6"
+        role="list"
+        aria-label="Warehouse bins by location"
+      >
         {bins.map((bin) => (
           <div
             key={bin.location}
+            role="listitem"
             className={cn(
               "rounded-lg border p-3 transition-shadow hover:shadow-sm",
               TONE[bin.status] ?? TONE.IN_STOCK,
             )}
-            title={bin.productNames.join(", ")}
+            title={`${bin.productNames.join(", ")} — ${bin.status.replaceAll("_", " ")}`}
           >
             <p className="font-mono text-sm font-bold tracking-tight">{bin.location}</p>
             <p className="mt-1 text-[11px] opacity-90">
@@ -51,8 +56,6 @@ export function WarehouseBinMap({ products }: { products: Product[] }) {
           </div>
         ))}
       </div>
-      {/* Satisfy tree-shaking / unused import check if status helper needed later */}
-      <span className="sr-only">{products.map((p) => calculateStockStatus(p)).join(",")}</span>
     </div>
   );
 }

@@ -26,6 +26,7 @@ import {
 } from "recharts";
 
 import { Button } from "@/components/ui/button";
+import { WarehouseBinMap } from "@/components/warehouse/bin-map";
 import { KpiCard } from "@/components/warehouse/kpi-card";
 import { EmptyState } from "@/components/warehouse/page-header";
 import { TransactionsTable } from "@/components/warehouse/transactions-table";
@@ -39,7 +40,7 @@ export const Route = createFileRoute("/")({
       {
         name: "description",
         content:
-          "Live warehouse dashboard with stock KPIs, movement charts, low-stock alerts and recent inventory transactions.",
+          "Live warehouse dashboard with stock KPIs, bin map, movement charts, low-stock alerts and recent inventory transactions.",
       },
       { property: "og:title", content: "StockNova Dashboard — Smart Warehouse Management" },
       {
@@ -105,64 +106,21 @@ function DashboardPage() {
       </header>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <KpiCard
-          label="Total Products"
-          value={formatNumber(stats.totalProducts)}
-          icon={Package}
-          hint="Active SKUs"
-        />
-        <KpiCard
-          label="Total Stock Units"
-          value={formatNumber(stats.totalUnits)}
-          icon={Boxes}
-          tone="info"
-          hint="Units on hand"
-        />
-        <KpiCard
-          label="Low Stock Items"
-          value={formatNumber(stats.lowStockCount)}
-          icon={AlertTriangle}
-          tone="warning"
-          hint="At or below minimum"
-        />
-        <KpiCard
-          label="Out of Stock"
-          value={formatNumber(stats.outOfStockCount)}
-          icon={CircleSlash}
-          tone="danger"
-          hint="Requires reorder"
-        />
-        <KpiCard
-          label="Stock In Today"
-          value={formatNumber(stats.stockInToday)}
-          icon={ArrowDownToLine}
-          tone="success"
-          hint="Units received"
-        />
-        <KpiCard
-          label="Stock Out Today"
-          value={formatNumber(stats.stockOutToday)}
-          icon={ArrowUpFromLine}
-          tone="info"
-          hint="Units dispatched"
-        />
-        <KpiCard
-          label="Inventory Value"
-          value={formatCurrency(stats.inventoryValue)}
-          icon={Wallet}
-          tone="success"
-          hint="Quantity × unit price"
-        />
+        <KpiCard label="Total Products" value={formatNumber(stats.totalProducts)} icon={Package} hint="Active SKUs" />
+        <KpiCard label="Total Stock Units" value={formatNumber(stats.totalUnits)} icon={Boxes} tone="info" hint="Units on hand" />
+        <KpiCard label="Low Stock Items" value={formatNumber(stats.lowStockCount)} icon={AlertTriangle} tone="warning" hint="At or below minimum" />
+        <KpiCard label="Out of Stock" value={formatNumber(stats.outOfStockCount)} icon={CircleSlash} tone="danger" hint="Requires reorder" />
+        <KpiCard label="Stock In Today" value={formatNumber(stats.stockInToday)} icon={ArrowDownToLine} tone="success" hint="Units received" />
+        <KpiCard label="Stock Out Today" value={formatNumber(stats.stockOutToday)} icon={ArrowUpFromLine} tone="info" hint="Units dispatched" />
+        <KpiCard label="Inventory Value" value={formatCurrency(stats.inventoryValue)} icon={Wallet} tone="success" hint="Quantity × unit price" />
         <div className="card-surface flex flex-col justify-center gap-2 p-4">
-          <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-            Quick actions
-          </p>
+          <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Quick actions</p>
           <div className="flex flex-wrap gap-2">
             <Button asChild size="sm">
               <Link to="/stock-in">Stock In</Link>
             </Button>
             <Button asChild size="sm" variant="outline">
-              <Link to="/stock-out">Stock Out</Link>
+              <Link to="/fulfillment">Fulfill order</Link>
             </Button>
             <Button size="sm" variant="secondary" onClick={resetDemoData}>
               <RotateCcw className="size-3.5" aria-hidden /> Demo data
@@ -171,24 +129,22 @@ function DashboardPage() {
         </div>
       </div>
 
+      <section className="card-surface p-5">
+        <h2 className="font-display text-base font-semibold">Warehouse bin map</h2>
+        <p className="mb-4 text-xs text-muted-foreground">
+          Each tile is a location. Color shows the worst stock status in that bin (out &gt; low &gt; healthy).
+        </p>
+        <WarehouseBinMap products={data.products} />
+      </section>
+
       <div className="grid gap-4 xl:grid-cols-3">
         <ChartCard title="Inventory by Category" subtitle="Units on hand per product category">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={categories} margin={{ left: -18, right: 8, top: 8 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-              <XAxis
-                dataKey="category"
-                tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
-                tickFormatter={(v: string) => (v.length > 10 ? `${v.slice(0, 9)}…` : v)}
-              />
+              <XAxis dataKey="category" tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} tickFormatter={(v: string) => (v.length > 10 ? `${v.slice(0, 9)}…` : v)} />
               <YAxis tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} />
-              <Tooltip
-                contentStyle={{
-                  borderRadius: 10,
-                  border: "1px solid var(--border)",
-                  fontSize: 12,
-                }}
-              />
+              <Tooltip contentStyle={{ borderRadius: 10, border: "1px solid var(--border)", fontSize: 12 }} />
               <Bar dataKey="units" name="Units" fill="var(--chart-1)" radius={[6, 6, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
@@ -200,30 +156,10 @@ function DashboardPage() {
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
               <XAxis dataKey="label" tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} />
               <YAxis tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} />
-              <Tooltip
-                contentStyle={{
-                  borderRadius: 10,
-                  border: "1px solid var(--border)",
-                  fontSize: 12,
-                }}
-              />
+              <Tooltip contentStyle={{ borderRadius: 10, border: "1px solid var(--border)", fontSize: 12 }} />
               <Legend wrapperStyle={{ fontSize: 12 }} />
-              <Line
-                type="monotone"
-                dataKey="stockIn"
-                name="Stock In"
-                stroke="var(--success)"
-                strokeWidth={2.5}
-                dot={false}
-              />
-              <Line
-                type="monotone"
-                dataKey="stockOut"
-                name="Stock Out"
-                stroke="var(--chart-1)"
-                strokeWidth={2.5}
-                dot={false}
-              />
+              <Line type="monotone" dataKey="stockIn" name="Stock In" stroke="var(--success)" strokeWidth={2.5} dot={false} />
+              <Line type="monotone" dataKey="stockOut" name="Stock Out" stroke="var(--chart-1)" strokeWidth={2.5} dot={false} />
             </LineChart>
           </ResponsiveContainer>
         </ChartCard>
@@ -231,25 +167,12 @@ function DashboardPage() {
         <ChartCard title="Stock Status" subtitle="Healthy, low and out-of-stock products">
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
-              <Pie
-                data={status}
-                dataKey="value"
-                nameKey="name"
-                innerRadius={58}
-                outerRadius={92}
-                paddingAngle={2}
-              >
+              <Pie data={status} dataKey="value" nameKey="name" innerRadius={58} outerRadius={92} paddingAngle={2}>
                 {status.map((entry, index) => (
                   <Cell key={entry.key} fill={STATUS_COLORS[index]} />
                 ))}
               </Pie>
-              <Tooltip
-                contentStyle={{
-                  borderRadius: 10,
-                  border: "1px solid var(--border)",
-                  fontSize: 12,
-                }}
-              />
+              <Tooltip contentStyle={{ borderRadius: 10, border: "1px solid var(--border)", fontSize: 12 }} />
               <Legend wrapperStyle={{ fontSize: 12 }} />
             </PieChart>
           </ResponsiveContainer>
@@ -275,10 +198,7 @@ function DashboardPage() {
           <p className="text-xs text-muted-foreground">Products at or below minimum level</p>
           <div className="mt-4 flex-1 space-y-3">
             {lowStock.length === 0 ? (
-              <EmptyState
-                title="All stock is healthy"
-                description="No product has dropped to its minimum level."
-              />
+              <EmptyState title="All stock is healthy" description="No product has dropped to its minimum level." />
             ) : (
               lowStock.slice(0, 5).map((p) => (
                 <div key={p.id} className="rounded-lg border border-warning/30 bg-warning-soft p-3">
@@ -287,8 +207,8 @@ function DashboardPage() {
                     {p.name}
                   </p>
                   <p className="mt-1 text-xs text-warning-foreground/80">
-                    Current: {formatNumber(p.quantity)} · Minimum: {formatNumber(p.minimumStock)} ·
-                    Location: {p.location}
+                    Current: {formatNumber(p.quantity)} · Minimum: {formatNumber(p.minimumStock)} · Location:{" "}
+                    {p.location}
                   </p>
                 </div>
               ))

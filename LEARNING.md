@@ -1,52 +1,111 @@
 # What to learn from StockNova
 
-This project is structured like a small real product. Studying it teaches patterns you will reuse in larger systems.
+This is a small product with the same *shape* as larger systems. Study the seams, not only the screens.
 
-## 1. Separate pure logic from UI
+Also do: **[EXERCISES.md](./EXERCISES.md)** — guided practice path.
+
+---
+
+## Architecture (memorize this diagram)
+
+```
+┌─────────────────────────────────────────────┐
+│  UI (routes + components)                   │
+│  forms, charts, bin map, toasts             │
+└─────────────────┬───────────────────────────┘
+                  │ calls
+┌─────────────────▼───────────────────────────┐
+│  store.tsx (React Context)                  │
+│  commit → saveData + setState + toast       │
+└─────────────────┬───────────────────────────┘
+                  │ pure functions
+┌─────────────────▼───────────────────────────┐
+│  logic.ts · fulfillment.ts · locations.ts   │
+│  Result<T>, no React, no LocalStorage       │
+└─────────────────┬───────────────────────────┘
+                  │
+┌─────────────────▼───────────────────────────┐
+│  storage.ts                                 │
+│  parse/sanitize · seed · persist            │
+└─────────────────────────────────────────────┘
+```
+
+**Rule of thumb:** if a function needs `window` or JSX, it is not domain logic.
+
+---
+
+## 1. Pure logic vs UI
 
 | Layer | Files | Responsibility |
 |-------|--------|----------------|
-| **Domain / pure logic** | `src/lib/warehouse/logic.ts`, `fulfillment.ts` | Rules only — no React, no LocalStorage |
-| **Persistence** | `storage.ts` | Load/save/sanitize |
-| **React bridge** | `store.tsx` | Context + toasts + commit |
-| **UI** | `routes/*`, `components/*` | Forms, charts, navigation |
+| Domain | `logic.ts`, `fulfillment.ts`, `locations.ts` | Rules only |
+| Persistence | `storage.ts` | Load/save/sanitize |
+| Bridge | `store.tsx` | Context + toasts + commit |
+| UI | `routes/*`, `components/*` | Presentation |
 
-**Why it matters:** you can unit-test stock rules without mounting React. Real WMS backends do the same: domain services vs HTTP vs DB.
+You can unit-test stock rules without mounting React — same idea as backend service tests.
 
-## 2. Result type instead of throwing
+---
+
+## 2. `Result` instead of throw
 
 ```ts
 type Result<T> = { ok: true; value: T } | { ok: false; error: string };
 ```
 
-Mutations return `Result` so the UI always shows a clear message and never leaves half-updated state. Fulfillment is **atomic**: validate all lines first, then apply all updates.
+UI always gets a message. Fulfillment is **atomic**: validate every line, then apply every line. No half-shipped orders.
 
-## 3. Order fulfillment = pick path optimization
+---
 
-`compareLocations` + `buildPickList` sort stops by aisle/bin (`A-2` before `A-12` before `B-03`). That mirrors how warehouses reduce walking time.
+## 3. Order fulfillment = path optimization
 
-Try it: open **Fulfillment**, add products from different locations, **Preview pick list**, then fulfill.
+`compareLocations` + `buildPickList` sort by aisle/bin (`A-2` → `A-12` → `B-03`). Real warehouses optimize walking distance the same way.
 
-## 4. Defensive persistence
+Demo: **Fulfillment** → multi-location lines → Preview → Fulfill.
 
-`parseData` sanitizes every field. Corrupted LocalStorage must not crash the app. First visit (or empty catalog) seeds demo data.
+---
 
-## 5. Tests as documentation
+## 4. Bin map = aggregate by location
+
+`buildBinMap` groups SKUs into bins and paints the **worst** status in that bin. Managers scan space, not tables.
+
+---
+
+## 5. Defensive persistence
+
+`parseData` never trusts LocalStorage. Bad rows are dropped; negatives clamped. Empty catalog re-seeds demo data.
+
+In production, replace this layer with SQL + migrations; **keep the domain functions**.
+
+---
+
+## 6. Tests as living specs
 
 ```bash
 npm test
 ```
 
-Read `logic.test.ts` and `fulfillment.test.ts` — each `it(...)` name describes a business rule.
+| File | Focus |
+|------|--------|
+| `logic.test.ts` | Status, CRUD, stock in/out, KPIs, filters, reorder |
+| `fulfillment.test.ts` | Pick path, atomic fulfill |
+| `locations.test.ts` | Bin aggregation |
+| `storage.test.ts` | Corrupt JSON resilience |
 
-## 6. Ideas to extend (great practice)
+CI (GitHub Actions) runs the same command on every push.
 
-1. **Reserve stock** when a pick list is created (status: reserved → shipped).
-2. **Multi-warehouse** locations and transfer stock between sites.
-3. **Backend API** (Node/FastAPI) + Postgres instead of LocalStorage.
-4. **Barcode scan** field that focuses the matching SKU.
-5. **Role-based UI** (picker vs manager).
+---
 
-## 7. Challenge tip
+## 7. Growth path after this project
 
-Re-submit GitHub + Vercel after each major improvement so the AI evaluator sees tests, fulfillment, and a live non-empty demo.
+1. Reserve / release stock on pick lists  
+2. REST or tRPC API + Postgres  
+3. Auth roles (picker vs manager)  
+4. Optimistic concurrency (version column on product)  
+5. Event log instead of only current quantity  
+
+---
+
+## Challenge tip
+
+After changes, confirm Vercel is green, live demo shows data (or Load Demo Data), then **re-submit** GitHub + Vercel URLs so the evaluator sees tests, fulfillment, and a living UI.
