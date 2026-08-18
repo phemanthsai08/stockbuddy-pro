@@ -73,4 +73,28 @@ describe("parseData", () => {
     expect(data.products[0]!.minimumStock).toBe(0);
     expect(data.products[0]!.unitPrice).toBe(0);
   });
+
+  it("returns null for non-object JSON roots", () => {
+    expect(parseData("[]")).toBeNull();
+    expect(parseData("42")).toBeNull();
+    expect(parseData('"string"')).toBeNull();
+  });
+
+  it("fills default settings when missing", () => {
+    const raw = JSON.stringify({
+      products: [
+        {
+          sku: "S1",
+          name: "Item",
+          quantity: 1,
+          minimumStock: 0,
+          unitPrice: 1,
+        },
+      ],
+      transactions: [],
+    });
+    const data = parseData(raw)!;
+    expect(data.settings.companyName).toBe("StockNova");
+    expect(data.settings.seeded).toBe(false);
+  });
 });
