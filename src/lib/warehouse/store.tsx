@@ -13,9 +13,11 @@ import {
 } from "react";
 import { toast } from "sonner";
 
+import * as fulfillment from "./fulfillment";
 import * as logic from "./logic";
 import { EMPTY_DATA, loadData, resetData, saveData } from "./storage";
 import type { MovementInput } from "./logic";
+import type { FulfillOrderInput } from "./fulfillment";
 import type { ProductInput, WarehouseData } from "./types";
 
 interface WarehouseContextValue {
@@ -26,6 +28,7 @@ interface WarehouseContextValue {
   deleteProduct: (id: string) => boolean;
   stockIn: (input: MovementInput) => boolean;
   stockOut: (input: MovementInput) => boolean;
+  fulfillOrder: (input: FulfillOrderInput) => boolean;
   resetDemoData: () => void;
 }
 
@@ -35,7 +38,6 @@ export function WarehouseProvider({ children }: { children: ReactNode }) {
   const [data, setData] = useState<WarehouseData>(EMPTY_DATA);
   const [ready, setReady] = useState(false);
 
-  // LocalStorage is browser-only: load after hydration.
   useEffect(() => {
     setData(loadData());
     setReady(true);
@@ -69,6 +71,8 @@ export function WarehouseProvider({ children }: { children: ReactNode }) {
       deleteProduct: (id) => run(logic.deleteProduct(data, id), "Product deleted"),
       stockIn: (input) => run(logic.stockIn(data, input), "Stock In recorded successfully"),
       stockOut: (input) => run(logic.stockOut(data, input), "Stock Out recorded successfully"),
+      fulfillOrder: (input) =>
+        run(fulfillment.fulfillOrder(data, input), "Order fulfilled — inventory updated"),
       resetDemoData: () => {
         setData(resetData());
         toast.success("Demo data restored");
@@ -86,7 +90,6 @@ export function useWarehouse(): WarehouseContextValue {
   return ctx;
 }
 
-/** Derived, memoised dashboard/report data. */
 export function useWarehouseStats() {
   const { data } = useWarehouse();
   return useMemo(

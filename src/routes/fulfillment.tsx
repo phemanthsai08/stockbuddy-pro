@@ -9,7 +9,6 @@ import { Label } from "@/components/ui/label";
 import { PageHeader } from "@/components/warehouse/page-header";
 import {
   buildPickList,
-  fulfillOrder,
   pickListTotalUnits,
   pickListTotalValue,
   type FulfillmentLine,
@@ -17,7 +16,6 @@ import {
 } from "@/lib/warehouse/fulfillment";
 import { formatCurrency, formatNumber, todayISO } from "@/lib/warehouse/logic";
 import { useWarehouse } from "@/lib/warehouse/store";
-import { saveData } from "@/lib/warehouse/storage";
 
 export const Route = createFileRoute("/fulfillment")({
   head: () => ({
@@ -47,10 +45,7 @@ interface DraftLine {
 }
 
 function FulfillmentPage() {
-  const { data, ready } = useWarehouse();
-  // Local commit because store does not yet expose fulfillOrder — we use pure logic + save.
-  const [, force] = useState(0);
-  const refresh = () => force((n) => n + 1);
+  const { data, ready, fulfillOrder } = useWarehouse();
 
   const [customer, setCustomer] = useState("Retail Branch North");
   const [reference, setReference] = useState(() => `ORD-${Date.now().toString().slice(-6)}`);
@@ -86,26 +81,19 @@ function FulfillmentPage() {
   };
 
   const handleFulfill = () => {
-    const result = fulfillOrder(data, {
+    const ok = fulfillOrder({
       lines: toLines(),
       customer,
       reference,
       date,
       notes,
     });
-    if (!result.ok) {
-      toast.error(result.error);
-      return;
+    if (ok) {
+      setPickList(null);
+      setLines([{ key: String(Date.now()), productId: "", quantity: "1" }]);
+      setReference(`ORD-${Date.now().toString().slice(-6)}`);
     }
-    saveData(result.value);
-    // Reload page state from storage by full reload of provider is hard; simplest reliable UX:
-    window.location.assign("/stock-out");
-    toast.success("Order fulfilled — inventory updated");
   };
-
-  // Better: use store if we add fulfillOrder — for now work through window event
-  // Actually let's use a custom approach - dispatch storage event won't update React.
-  // We'll patch via re-reading - need store method. Use temporary approach with location reload after save.
 
   return (
     <div className="space-y-6">
@@ -288,7 +276,7 @@ function FulfillmentPage() {
                 ))}
               </ol>
               <Button type="button" className="mt-4 w-full" onClick={handleFulfill}>
-                Fulfill order &amp; update inventory
+                Fulfill order and update inventory
               </Button>
               <p className="mt-2 text-center text-[11px] text-muted-foreground">
                 Atomic: either every line succeeds or nothing is changed.

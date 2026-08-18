@@ -4,6 +4,7 @@ import {
   ArrowDownToLine,
   ArrowUpFromLine,
   BarChart3,
+  ClipboardList,
   LayoutDashboard,
   Menu,
   Package,
@@ -21,6 +22,7 @@ const NAV = [
   { to: "/inventory", label: "Inventory", icon: Package },
   { to: "/stock-in", label: "Stock In", icon: ArrowDownToLine },
   { to: "/stock-out", label: "Stock Out", icon: ArrowUpFromLine },
+  { to: "/fulfillment", label: "Fulfillment", icon: ClipboardList },
   { to: "/alerts", label: "Alerts", icon: AlertTriangle },
   { to: "/reports", label: "Reports", icon: BarChart3 },
 ] as const;
