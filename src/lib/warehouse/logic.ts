@@ -11,6 +11,15 @@ import type {
   TransactionType,
   WarehouseData,
 } from "./types";
+import {
+  FIELD_LIMITS,
+  PRICE_MAX,
+  QUANTITY_MAX,
+  clampNonNegativeInt,
+  clampNonNegativeNumber,
+  isOverLength,
+  sanitizeText,
+} from "./sanitize";
 
 /* ------------------------------------------------------------------ utils */
 
@@ -202,7 +211,6 @@ export function getReorderSuggestions(
     let daysOfCover: number | null = null;
 
     if (avgDailyOut > 0.05) {
-      // Target ~14 days of cover above the minimum level
       const target = Math.ceil(avgDailyOut * 14) + product.minimumStock;
       suggestedQty = Math.max(product.minimumStock, target - product.quantity);
       daysOfCover = product.quantity > 0 ? Math.round(product.quantity / avgDailyOut) : 0;
@@ -211,7 +219,6 @@ export function getReorderSuggestions(
           ? `High velocity (~${avgDailyOut.toFixed(1)}/day). Only ~${daysOfCover} day(s) of cover left.`
           : `Based on recent demand (~${avgDailyOut.toFixed(1)} units/day).`;
     } else {
-      // No meaningful history — bring stock to 2× minimum
       suggestedQty = Math.max(product.minimumStock * 2 - product.quantity, product.minimumStock);
       reason = "No recent outbound history. Restock to 2× minimum level.";
     }
@@ -236,6 +243,20 @@ function fail(error: string): { ok: false; error: string } {
   return { ok: false, error };
 }
 
+export function normalizeProductInput(input: ProductInput): ProductInput {
+  return {
+    ...input,
+    name: sanitizeText(input.name, FIELD_LIMITS.name),
+    sku: sanitizeText(input.sku, FIELD_LIMITS.sku).toUpperCase(),
+    category: sanitizeText(input.category, FIELD_LIMITS.category),
+    location: sanitizeText(input.location, FIELD_LIMITS.location),
+    supplier: sanitizeText(input.supplier, FIELD_LIMITS.supplier),
+    quantity: clampNonNegativeInt(input.quantity),
+    minimumStock: clampNonNegativeInt(input.minimumStock),
+    unitPrice: clampNonNegativeNumber(input.unitPrice),
+  };
+}
+
 export function validateProductInput(
   input: ProductInput,
   products: Product[],
@@ -245,12 +266,28 @@ export function validateProductInput(
   if (!input.sku.trim()) return "SKU is required.";
   if (!input.category.trim()) return "Category is required.";
   if (!input.location.trim()) return "Warehouse location is required.";
+  if (isOverLength(input.name, FIELD_LIMITS.name))
+    return `Product name must be at most ${FIELD_LIMITS.name} characters.`;
+  if (isOverLength(input.sku, FIELD_LIMITS.sku))
+    return `SKU must be at most ${FIELD_LIMITS.sku} characters.`;
+  if (isOverLength(input.category, FIELD_LIMITS.category))
+    return `Category must be at most ${FIELD_LIMITS.category} characters.`;
+  if (isOverLength(input.location, FIELD_LIMITS.location))
+    return `Location must be at most ${FIELD_LIMITS.location} characters.`;
+  if (isOverLength(input.supplier, FIELD_LIMITS.supplier))
+    return `Supplier must be at most ${FIELD_LIMITS.supplier} characters.`;
   if (!Number.isFinite(input.quantity) || input.quantity < 0)
     return "Quantity must be zero or a positive number.";
+  if (input.quantity > QUANTITY_MAX)
+    return `Quantity cannot exceed ${QUANTITY_MAX.toLocaleString()}.`;
   if (!Number.isFinite(input.minimumStock) || input.minimumStock < 0)
     return "Minimum stock must be zero or a positive number.";
+  if (input.minimumStock > QUANTITY_MAX)
+    return `Minimum stock cannot exceed ${QUANTITY_MAX.toLocaleString()}.`;
   if (!Number.isFinite(input.unitPrice) || input.unitPrice < 0)
     return "Unit price must be a valid positive amount.";
+  if (input.unitPrice > PRICE_MAX)
+    return `Unit price cannot exceed ${PRICE_MAX.toLocaleString()}.`;
   const duplicate = products.some(
     (p) => p.sku.toLowerCase() === input.sku.trim().toLowerCase() && p.id !== ignoreId,
   );
@@ -261,11 +298,10 @@ export function validateProductInput(
 export function addProduct(data: WarehouseData, input: ProductInput): Result<WarehouseData> {
   const error = validateProductInput(input, data.products);
   if (error) return fail(error);
+  const normalized = normalizeProductInput(input);
   const now = new Date().toISOString();
   const product: Product = {
-    ...input,
-    sku: input.sku.trim().toUpperCase(),
-    name: input.name.trim(),
+    ...normalized,
     id: newId("p"),
     createdAt: now,
     updatedAt: now,
@@ -282,11 +318,10 @@ export function updateProduct(
   if (!existing) return fail("Product not found.");
   const error = validateProductInput(input, data.products, id);
   if (error) return fail(error);
+  const normalized = normalizeProductInput(input);
   const updated: Product = {
     ...existing,
-    ...input,
-    sku: input.sku.trim().toUpperCase(),
-    name: input.name.trim(),
+    ...normalized,
     updatedAt: new Date().toISOString(),
   };
   return {
@@ -318,11 +353,19 @@ function applyMovement(
   if (!product) return fail("Please select a valid product.");
   if (!Number.isFinite(input.quantity) || input.quantity <= 0)
     return fail("Quantity must be greater than zero.");
+  if (input.quantity > QUANTITY_MAX)
+    return fail(`Quantity cannot exceed ${QUANTITY_MAX.toLocaleString()}.`);
   const quantity = Math.round(input.quantity);
   if (!input.party.trim())
     return fail(type === "IN" ? "Supplier is required." : "Destination / customer is required.");
+  if (isOverLength(input.party, FIELD_LIMITS.party))
+    return fail(`Party name must be at most ${FIELD_LIMITS.party} characters.`);
   if (!input.date) return fail("Date is required.");
   if (!input.reference.trim()) return fail("Reference number is required.");
+  if (isOverLength(input.reference, FIELD_LIMITS.reference))
+    return fail(`Reference must be at most ${FIELD_LIMITS.reference} characters.`);
+  if (input.notes && isOverLength(input.notes, FIELD_LIMITS.notes))
+    return fail(`Notes must be at most ${FIELD_LIMITS.notes} characters.`);
   if (type === "OUT" && quantity > product.quantity) return fail("Insufficient stock available.");
 
   const nextQuantity = type === "IN" ? product.quantity + quantity : product.quantity - quantity;
@@ -333,10 +376,10 @@ function applyMovement(
     sku: product.sku,
     type,
     quantity,
-    party: input.party.trim(),
+    party: sanitizeText(input.party, FIELD_LIMITS.party),
     date: input.date,
-    reference: input.reference.trim(),
-    notes: input.notes?.trim() ?? "",
+    reference: sanitizeText(input.reference, FIELD_LIMITS.reference),
+    notes: sanitizeText(input.notes ?? "", FIELD_LIMITS.notes),
     createdAt: new Date().toISOString(),
   };
 
@@ -366,8 +409,8 @@ export function stockOut(data: WarehouseData, input: MovementInput): Result<Ware
 
 export interface InventoryFilters {
   search: string;
-  category: string; // "all" | category
-  status: string; // "all" | StockStatus
+  category: string;
+  status: string;
   sortBy: string;
 }
 
