@@ -55,7 +55,7 @@ Open **Alerts** → smart reorder suggestions from demand velocity.
 
 > “Domain logic is pure TypeScript with unit tests and CI. LocalStorage stands in for a database so the demo runs fully client-side. The same rules could sit behind an API tomorrow.”
 
-Mention: `npm test` → 40+ tests green.
+Mention: `bun run test` → 81 tests green.
 
 ---
 

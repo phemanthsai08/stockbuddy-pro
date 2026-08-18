@@ -12,26 +12,18 @@ This document explains the improvements just made and the **hard limits** of a c
 | Quantity / price caps | `QUANTITY_MAX`, `PRICE_MAX` | Stop absurd numbers bloating storage |
 | Control-character strip | `stripControlChars` | Keep exports and UI clean |
 | Normalize on write | `normalizeProductInput` | One path for clean data |
-| Defensive parse | `storage.ts` `parseData` | Never trust LocalStorage JSON |
-| Business validation | `Result` on stock/fulfill | Reject invalid operations |
+| Defensive parse | `storage.ts` `parseData` | Never trust LocalStorage JSON; reject arrays/non-objects |
+| Business validation | `Result` on stock/fulfill | Reject invalid operations before mutation |
 
-### What we **cannot** claim as 100% security
-
-1. **No server auth** — anyone with the browser can edit LocalStorage.
-2. **No multi-user isolation** — data is per browser, not per account.
-3. **No HTTPS policy enforcement in code** — hosting (Vercel) provides TLS.
-4. **XSS** — React escapes text by default; we still sanitize lengths/controls.
-
-**Interview line:** “We harden the domain boundary; production would add auth, CSRF, rate limits, and a real database.”
+React still escapes text content; sanitization is about **data hygiene and bounds**, not replacing a real backend auth model.
 
 ---
 
 ## Accessibility (what we did)
 
-| Feature | Where |
+| Pattern | Where |
 |---------|--------|
-| Skip to main content | `app-shell.tsx` |
-| `id="main-content"` + focusable main | `app-shell.tsx` |
+| Skip link | `__root.tsx` |
 | `aria-label` on icon buttons | inventory, fulfillment, nav |
 | `aria-current="page"` on active nav | app-shell |
 | `aria-expanded` / `aria-controls` for mobile menu | app-shell |
@@ -42,10 +34,10 @@ This document explains the improvements just made and the **hard limits** of a c
 
 ## Testing
 
-- **56** unit tests including sanitize + security limit cases
+- **81** unit tests including sanitize + security limit cases
 - CI runs on push
 
-Run: `npm test`
+Run: `bun run test` (or `npm test`)
 
 ---
 
