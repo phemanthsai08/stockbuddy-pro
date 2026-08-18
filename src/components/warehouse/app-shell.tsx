@@ -39,6 +39,13 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-screen bg-background lg:flex">
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-primary focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-primary-foreground"
+      >
+        Skip to main content
+      </a>
+
       {open ? (
         <button
           type="button"
@@ -49,6 +56,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       ) : null}
 
       <aside
+        id="app-sidebar"
         className={cn(
           "fixed inset-y-0 left-0 z-40 flex w-64 flex-col bg-sidebar text-sidebar-foreground transition-transform duration-200 lg:static lg:translate-x-0",
           open ? "translate-x-0" : "-translate-x-full",
@@ -76,11 +84,13 @@ export function AppShell({ children }: { children: ReactNode }) {
 
         <nav aria-label="Main navigation" className="flex-1 space-y-1 overflow-y-auto p-3">
           {NAV.map((item) => {
-            const active = item.to === "/" ? pathname === "/" : pathname.startsWith(item.to);
+            const active =
+              item.to === "/" ? pathname === "/" : pathname.startsWith(item.to);
             return (
               <Link
                 key={item.to}
                 to={item.to}
+                aria-current={active ? "page" : undefined}
                 className={cn(
                   "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
                   active
@@ -91,7 +101,10 @@ export function AppShell({ children }: { children: ReactNode }) {
                 <item.icon className="size-[18px]" aria-hidden />
                 {item.label}
                 {item.label === "Alerts" && alertCount > 0 ? (
-                  <span className="ml-auto rounded-full bg-destructive px-2 py-0.5 text-[11px] font-semibold text-destructive-foreground">
+                  <span
+                    className="ml-auto rounded-full bg-destructive px-2 py-0.5 text-[11px] font-semibold text-destructive-foreground"
+                    aria-label={`${alertCount} stock alerts`}
+                  >
                     {alertCount}
                   </span>
                 ) : null}
@@ -112,6 +125,8 @@ export function AppShell({ children }: { children: ReactNode }) {
             className="rounded-md border border-border p-2 lg:hidden"
             onClick={() => setOpen(true)}
             aria-label="Open navigation"
+            aria-expanded={open}
+            aria-controls="app-sidebar"
           >
             <Menu className="size-5" aria-hidden />
           </button>
@@ -138,7 +153,13 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
         </header>
 
-        <main className="mx-auto w-full max-w-7xl flex-1 space-y-6 p-4 sm:p-6">{children}</main>
+        <main
+          id="main-content"
+          tabIndex={-1}
+          className="mx-auto w-full max-w-7xl flex-1 space-y-6 p-4 sm:p-6 outline-none"
+        >
+          {children}
+        </main>
       </div>
     </div>
   );

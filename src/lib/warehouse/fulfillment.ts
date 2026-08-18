@@ -1,11 +1,9 @@
 /**
  * StockNova — order fulfillment & pick-list logic.
  * Kept pure (no React / no LocalStorage) so it is easy to unit-test and reuse.
- *
- * Real WMS systems sort picks by bin location so walkers take a short path
- * through the warehouse instead of zig-zagging by product name.
  */
 import { newId, type Result } from "./logic";
+import { FIELD_LIMITS, isOverLength, sanitizeText } from "./sanitize";
 import type { Product, Transaction, WarehouseData } from "./types";
 
 export interface FulfillmentLine {
@@ -28,7 +26,7 @@ function fail(error: string): { ok: false; error: string } {
   return { ok: false, error };
 }
 
-/** Natural-ish location sort: A-12 before A-2 is wrong if pure string — we split aisle-bin. */
+/** Natural-ish location sort: aisle then bin number. */
 export function compareLocations(a: string, b: string): number {
   const parse = (loc: string) => {
     const m = loc.trim().match(/^([A-Za-z]+)\s*-?\s*(\d+)/);
@@ -42,10 +40,6 @@ export function compareLocations(a: string, b: string): number {
   return a.localeCompare(b);
 }
 
-/**
- * Builds a pick list sorted by warehouse location (efficient walking order).
- * Validates products exist and quantities are positive; does not reserve stock yet.
- */
 export function buildPickList(
   products: Product[],
   lines: FulfillmentLine[],
@@ -101,19 +95,19 @@ export interface FulfillOrderInput {
   notes?: string;
 }
 
-/**
- * Atomically fulfills a multi-line order:
- * 1) Validate every line (no partial commit).
- * 2) Decrement all quantities.
- * 3) Append one OUT transaction per line with the same order reference.
- */
 export function fulfillOrder(
   data: WarehouseData,
   input: FulfillOrderInput,
 ): Result<WarehouseData> {
   if (!input.customer.trim()) return fail("Customer / destination is required.");
+  if (isOverLength(input.customer, FIELD_LIMITS.party))
+    return fail(`Customer must be at most ${FIELD_LIMITS.party} characters.`);
   if (!input.reference.trim()) return fail("Order reference is required.");
+  if (isOverLength(input.reference, FIELD_LIMITS.reference))
+    return fail(`Order reference must be at most ${FIELD_LIMITS.reference} characters.`);
   if (!input.date) return fail("Date is required.");
+  if (input.notes && isOverLength(input.notes, FIELD_LIMITS.notes))
+    return fail(`Notes must be at most ${FIELD_LIMITS.notes} characters.`);
 
   const pick = buildPickList(data.products, input.lines);
   if (!pick.ok) return pick;
@@ -139,10 +133,12 @@ export function fulfillOrder(
       sku: item.sku,
       type: "OUT" as const,
       quantity: item.quantity,
-      party: input.customer.trim(),
+      party: sanitizeText(input.customer, FIELD_LIMITS.party),
       date: input.date,
-      reference: input.reference.trim(),
-      notes: input.notes?.trim() || `Fulfillment pick step ${item.step} @ ${item.location}`,
+      reference: sanitizeText(input.reference, FIELD_LIMITS.reference),
+      notes: input.notes?.trim()
+        ? sanitizeText(input.notes, FIELD_LIMITS.notes)
+        : `Fulfillment pick step ${item.step} @ ${item.location}`,
       createdAt: now,
     })),
     ...data.transactions,
