@@ -6,6 +6,7 @@ import {
   Boxes,
   CircleSlash,
   Package,
+  RotateCcw,
   Wallet,
 } from "lucide-react";
 import {
@@ -78,9 +79,10 @@ function ChartCard({
 }
 
 function DashboardPage() {
-  const { data, ready } = useWarehouse();
+  const { data, ready, resetDemoData } = useWarehouse();
   const { stats, categories, movement, status, lowStock } = useWarehouseStats();
   const recent = data.transactions.slice(0, 8);
+  const isEmpty = ready && data.products.length === 0;
 
   return (
     <div className="space-y-6">
@@ -89,19 +91,61 @@ function DashboardPage() {
           {greeting()}, Warehouse Manager
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          {ready
-            ? `${stats.transactionsToday} movements logged today · ${formatNumber(stats.stockInToday)} units received · ${formatNumber(stats.stockOutToday)} units dispatched · ${stats.lowStockCount + stats.outOfStockCount} items need attention.`
-            : "Loading your warehouse data…"}
+          {!ready
+            ? "Loading your warehouse data…"
+            : isEmpty
+              ? "No products yet. Load demo data to explore the full warehouse experience."
+              : `${stats.transactionsToday} movements logged today · ${formatNumber(stats.stockInToday)} units received · ${formatNumber(stats.stockOutToday)} units dispatched · ${stats.lowStockCount + stats.outOfStockCount} items need attention.`}
         </p>
+        {isEmpty ? (
+          <Button className="mt-4" onClick={resetDemoData}>
+            <RotateCcw className="size-4" aria-hidden /> Load Demo Data
+          </Button>
+        ) : null}
       </header>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <KpiCard label="Total Products" value={formatNumber(stats.totalProducts)} icon={Package} hint="Active SKUs" />
-        <KpiCard label="Total Stock Units" value={formatNumber(stats.totalUnits)} icon={Boxes} tone="info" hint="Units on hand" />
-        <KpiCard label="Low Stock Items" value={formatNumber(stats.lowStockCount)} icon={AlertTriangle} tone="warning" hint="At or below minimum" />
-        <KpiCard label="Out of Stock" value={formatNumber(stats.outOfStockCount)} icon={CircleSlash} tone="danger" hint="Requires reorder" />
-        <KpiCard label="Stock In Today" value={formatNumber(stats.stockInToday)} icon={ArrowDownToLine} tone="success" hint="Units received" />
-        <KpiCard label="Stock Out Today" value={formatNumber(stats.stockOutToday)} icon={ArrowUpFromLine} tone="info" hint="Units dispatched" />
+        <KpiCard
+          label="Total Products"
+          value={formatNumber(stats.totalProducts)}
+          icon={Package}
+          hint="Active SKUs"
+        />
+        <KpiCard
+          label="Total Stock Units"
+          value={formatNumber(stats.totalUnits)}
+          icon={Boxes}
+          tone="info"
+          hint="Units on hand"
+        />
+        <KpiCard
+          label="Low Stock Items"
+          value={formatNumber(stats.lowStockCount)}
+          icon={AlertTriangle}
+          tone="warning"
+          hint="At or below minimum"
+        />
+        <KpiCard
+          label="Out of Stock"
+          value={formatNumber(stats.outOfStockCount)}
+          icon={CircleSlash}
+          tone="danger"
+          hint="Requires reorder"
+        />
+        <KpiCard
+          label="Stock In Today"
+          value={formatNumber(stats.stockInToday)}
+          icon={ArrowDownToLine}
+          tone="success"
+          hint="Units received"
+        />
+        <KpiCard
+          label="Stock Out Today"
+          value={formatNumber(stats.stockOutToday)}
+          icon={ArrowUpFromLine}
+          tone="info"
+          hint="Units dispatched"
+        />
         <KpiCard
           label="Inventory Value"
           value={formatCurrency(stats.inventoryValue)}
@@ -119,6 +163,9 @@ function DashboardPage() {
             </Button>
             <Button asChild size="sm" variant="outline">
               <Link to="/stock-out">Stock Out</Link>
+            </Button>
+            <Button size="sm" variant="secondary" onClick={resetDemoData}>
+              <RotateCcw className="size-3.5" aria-hidden /> Demo data
             </Button>
           </div>
         </div>
