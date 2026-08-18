@@ -15,6 +15,7 @@ import { Route as InventoryRouteImport } from './routes/inventory'
 import { Route as ReportsRouteImport } from './routes/reports'
 import { Route as StockInRouteImport } from './routes/stock-in'
 import { Route as StockOutRouteImport } from './routes/stock-out'
+import { Route as FulfillmentRouteImport } from './routes/fulfillment'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -46,6 +47,11 @@ const StockOutRoute = StockOutRouteImport.update({
   path: '/stock-out',
   getParentRoute: () => rootRouteImport,
 } as any)
+const FulfillmentRoute = FulfillmentRouteImport.update({
+  id: '/fulfillment',
+  path: '/fulfillment',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -54,6 +60,7 @@ export interface FileRoutesByFullPath {
   '/reports': typeof ReportsRoute
   '/stock-in': typeof StockInRoute
   '/stock-out': typeof StockOutRoute
+  '/fulfillment': typeof FulfillmentRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -62,6 +69,7 @@ export interface FileRoutesByTo {
   '/reports': typeof ReportsRoute
   '/stock-in': typeof StockInRoute
   '/stock-out': typeof StockOutRoute
+  '/fulfillment': typeof FulfillmentRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -71,13 +79,27 @@ export interface FileRoutesById {
   '/reports': typeof ReportsRoute
   '/stock-in': typeof StockInRoute
   '/stock-out': typeof StockOutRoute
+  '/fulfillment': typeof FulfillmentRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    '/' | '/alerts' | '/inventory' | '/reports' | '/stock-in' | '/stock-out'
+    | '/'
+    | '/alerts'
+    | '/inventory'
+    | '/reports'
+    | '/stock-in'
+    | '/stock-out'
+    | '/fulfillment'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/alerts' | '/inventory' | '/reports' | '/stock-in' | '/stock-out'
+  to:
+    | '/'
+    | '/alerts'
+    | '/inventory'
+    | '/reports'
+    | '/stock-in'
+    | '/stock-out'
+    | '/fulfillment'
   id:
     | '__root__'
     | '/'
@@ -86,6 +108,7 @@ export interface FileRouteTypes {
     | '/reports'
     | '/stock-in'
     | '/stock-out'
+    | '/fulfillment'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -95,6 +118,7 @@ export interface RootRouteChildren {
   ReportsRoute: typeof ReportsRoute
   StockInRoute: typeof StockInRoute
   StockOutRoute: typeof StockOutRoute
+  FulfillmentRoute: typeof FulfillmentRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -141,6 +165,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof StockOutRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/fulfillment': {
+      id: '/fulfillment'
+      path: '/fulfillment'
+      fullPath: '/fulfillment'
+      preLoaderRoute: typeof FulfillmentRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -151,6 +182,7 @@ const rootRouteChildren: RootRouteChildren = {
   ReportsRoute: ReportsRoute,
   StockInRoute: StockInRoute,
   StockOutRoute: StockOutRoute,
+  FulfillmentRoute: FulfillmentRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
