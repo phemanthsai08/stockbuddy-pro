@@ -163,6 +163,69 @@ export function statusBreakdown(products: Product[]) {
   ];
 }
 
+/* -------------------------------------------------- smart reorder logic */
+
+export interface ReorderSuggestion {
+  product: Product;
+  suggestedQty: number;
+  reason: string;
+  avgDailyOut: number;
+  daysOfCover: number | null;
+}
+
+/**
+ * Suggests reorder quantities for low / out-of-stock items.
+ * Uses average daily stock-out velocity over the last 14 days when available,
+ * otherwise falls back to a simple "bring to 2× minimum" rule.
+ */
+export function getReorderSuggestions(
+  products: Product[],
+  transactions: Transaction[],
+  lookbackDays = 14,
+): ReorderSuggestion[] {
+  const alerts = getAlertItems(products);
+  if (alerts.length === 0) return [];
+
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - lookbackDays);
+  const cutoffISO = cutoff.toISOString().slice(0, 10);
+
+  return alerts.map((product) => {
+    const outs = transactions.filter(
+      (t) => t.productId === product.id && t.type === "OUT" && t.date >= cutoffISO,
+    );
+    const totalOut = outs.reduce((s, t) => s + t.quantity, 0);
+    const avgDailyOut = totalOut / lookbackDays;
+
+    let suggestedQty: number;
+    let reason: string;
+    let daysOfCover: number | null = null;
+
+    if (avgDailyOut > 0.05) {
+      // Target ~14 days of cover above the minimum level
+      const target = Math.ceil(avgDailyOut * 14) + product.minimumStock;
+      suggestedQty = Math.max(product.minimumStock, target - product.quantity);
+      daysOfCover = product.quantity > 0 ? Math.round(product.quantity / avgDailyOut) : 0;
+      reason =
+        daysOfCover !== null && daysOfCover <= 3
+          ? `High velocity (~${avgDailyOut.toFixed(1)}/day). Only ~${daysOfCover} day(s) of cover left.`
+          : `Based on recent demand (~${avgDailyOut.toFixed(1)} units/day).`;
+    } else {
+      // No meaningful history — bring stock to 2× minimum
+      suggestedQty = Math.max(product.minimumStock * 2 - product.quantity, product.minimumStock);
+      reason = "No recent outbound history. Restock to 2× minimum level.";
+    }
+
+    return {
+      product,
+      suggestedQty: Math.max(1, Math.round(suggestedQty)),
+      reason,
+      avgDailyOut: Math.round(avgDailyOut * 10) / 10,
+      daysOfCover,
+    };
+  });
+}
+
 /* ------------------------------------------------------------- mutations  */
 
 export type Result<T = void> =
