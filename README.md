@@ -19,7 +19,7 @@ A production-quality warehouse management demo for inventory tracking, stock mov
 - **Alerts** — Low / out of stock + **smart reorder suggestions** (demand velocity)
 - **Reports** — Summaries + CSV export
 - **Persistence** — Defensive LocalStorage; demo seed when empty
-- **Tests** — **37 unit tests** (Vitest) + GitHub Actions CI
+- **Tests** — **81 unit tests** (Vitest) + GitHub Actions CI
 - **Accessibility & responsive** UI
 
 ---
@@ -43,13 +43,14 @@ A production-quality warehouse management demo for inventory tracking, stock mov
 
 ```
 src/lib/warehouse/
-  logic.ts           # Stock rules, KPIs, reorder
-  logic.test.ts
-  fulfillment.ts     # Pick lists + atomic multi-line fulfill
-  fulfillment.test.ts
-  storage.ts         # LocalStorage only
+  types.ts           # Domain types
+  sanitize.ts        # Length limits + control-char strip
+  logic.ts           # Stock rules, KPIs, reorder, CSV
+  fulfillment.ts     # Location-sorted pick lists + atomic fulfill
+  locations.ts       # Bin map aggregation
+  storage.ts         # Defensive LocalStorage parse/seed
   store.tsx          # React bridge
-  types.ts
+  *.test.ts          # 81 pure unit tests
 routes/
   fulfillment.tsx    # Order fulfillment UI
   ...
@@ -62,17 +63,17 @@ routes/
 ```bash
 git clone https://github.com/phemanthsai08/stockbuddy-pro.git
 cd stockbuddy-pro
-npm install
-npm run dev
-npm test
+bun install          # or: npm install
+bun run dev          # or: npm run dev
+bun run test         # or: npm test
 ```
 
 | Command | Description |
 |---------|-------------|
-| `npm run dev` | Development server |
-| `npm run build` | Production build |
-| `npm test` | Run all unit tests |
-| `npm run test:watch` | Watch mode |
+| `bun run dev` / `npm run dev` | Development server |
+| `bun run build` / `npm run build` | Production build |
+| `bun run test` / `npm test` | Run all unit tests (81) |
+| `bun run test:watch` / `npm run test:watch` | Watch mode |
 
 ---
 
