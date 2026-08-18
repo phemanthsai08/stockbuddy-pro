@@ -97,7 +97,7 @@ export function parseData(rawJson: string | null): WarehouseData | null {
   if (!rawJson) return null;
   try {
     const parsed = JSON.parse(rawJson) as unknown;
-    if (!parsed || typeof parsed !== "object") return null;
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return null;
     const obj = parsed as Record<string, unknown>;
     const products = Array.isArray(obj["products"])
       ? obj["products"].map(sanitizeProduct).filter((p): p is Product => p !== null)
